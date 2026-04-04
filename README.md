@@ -17,9 +17,12 @@ Android APK security analysis tool that runs in the browser. Drop an APK file, i
 
 **Manifest Parser** : decodes binary AXML. Exported components, permissions, SDK versions, backup flags, deep link schemes, task hijacking, custom permissions.
 
-**Certificate Analysis** : reads signing certs from the APK. Debug keys, expired certs, weak algorithms, v1/v2/v3 signing scheme detection.
+**Certificate Analysis** : reads signing certs from the APK
 
 **Component Inspector** : lists all exported activities, services, receivers, providers with intent filters and permissions. Generates ADB commands to test each one.
+
+<img width="1725" height="806" alt="image" src="https://github.com/user-attachments/assets/c0460bd6-5ce5-440c-9bbb-93f991370470" />
+
 
 **Tracker Detection** : identifies 38+ ad SDKs, analytics, crash reporters, payment libs from DEX strings.
 
