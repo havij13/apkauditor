@@ -6,7 +6,8 @@
 
 Android APK security analysis tool that runs in the browser. Drop an APK file, it decompiles the DEX, parses the manifest, scans for issues, and lets you browse the code. Nothing gets uploaded anywhere.
 
-<img width="1624" alt="APK Auditor" src="https://github.com/user-attachments/assets/placeholder.png" />
+<img width="1547" height="853" alt="image" src="https://github.com/user-attachments/assets/983ac4c4-b1d3-4b07-9c51-1c28b60318fb" />
+
 
 ## What It Does
 
@@ -24,7 +25,7 @@ Android APK security analysis tool that runs in the browser. Drop an APK file, i
 
 **File Explorer** : browse APK contents. XML, JSON, images, databases, .so files with syntax highlighting or hex view.
 
-**PDF Export** : findings report with all instances, CWE/OWASP/MASVS mappings, and manual verification disclaimer.
+**PDF Export** : findings report with all instances.
 
 ## Use It
 
