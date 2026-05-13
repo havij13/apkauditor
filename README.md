@@ -1,91 +1,150 @@
 # APK Auditor
 
-[![JavaScript](https://img.shields.io/badge/JavaScript-Client--Side-F7DF1E?style=flat&logo=javascript&logoColor=black)](https://developer.mozilla.org/en-US/docs/Web/JavaScript)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-1.0.0-green.svg)](../../releases)
+[![License: CC BY-NC-ND 4.0](https://img.shields.io/badge/License-CC%20BY--NC--ND%204.0-blue.svg)](LICENSE)
+[![Version](https://img.shields.io/badge/Version-3.0-10D689.svg)](../../releases)
+[![Pure JS](https://img.shields.io/badge/Pure-JavaScript-F7DF1E?logo=javascript&logoColor=black)](https://developer.mozilla.org/en-US/docs/Web/JavaScript)
 
-Android APK security analysis tool that runs in the browser. Drop an APK file, it decompiles the DEX, parses the manifest, scans for issues, and lets you browse the code. Nothing gets uploaded anywhere.
+Drop an APK on the page. The browser parses the DEX bytecode, decodes the binary AndroidManifest, reads the signing certificate, walks the components, hunts for secrets, and shows you a security score. Nothing leaves the tab.
 
-<img width="1547" height="853" alt="image" src="https://github.com/user-attachments/assets/983ac4c4-b1d3-4b07-9c51-1c28b60318fb" />
+Try it: [apkauditor.com](https://apkauditor.com)
 
+![APK Auditor landing](docs/screenshots/landing-dark.png)
 
-## What It Does
+## What it actually does
 
-**DEX Decompiler** : reads DEX bytecode and converts it to Java pseudocode and Smali disassembly. Class trees, method signatures, field listings, string extraction.
+It runs everything client-side. The APK ZIP is read with JSZip, then:
 
-**Security Scanner** : 80+ rules covering hardcoded secrets, weak crypto, insecure HTTP, exported components, WebView vulns, intent issues, SQL injection, certificate pinning bypasses, and more. Findings tagged with CWE, OWASP Mobile Top 10, MASVS.
+- **DEX parsing** reads the header, string pool, type IDs, method IDs, class defs, and bytecode. Up to 10 DEX files are supported (classes.dex through classes10.dex).
+- **AXML parser** decodes the binary AndroidManifest into XML so you can read it.
+- **PKCS#7 parser** walks the signing certificate DER tree to extract subject, issuer, algorithm, validity, and fingerprint.
+- **APK Signing Block scan** looks for the v2/v3 magic in the trailing bytes.
+- **Resource decoder** reads compiled `resources.arsc` enough to flag hardcoded secrets in string resources.
+- **Tracker detection** matches DEX strings against known SDK fingerprints (Firebase, AdMob, Crashlytics, Branch, and 30+ others).
+- **Rule engine** applies 80+ static rules covering crypto, network, manifest, WebView, storage, and code patterns. Each finding is tagged with CWE, OWASP Mobile Top 10, and MASVS.
+- **Entropy-aware secret detection** runs Shannon entropy over candidate strings to suppress noisy false positives. Vendor regexes for AWS, Stripe, GitHub, Slack, Google API keys, JWT, PEM blocks, Twilio, and more.
 
-**Manifest Parser** : decodes binary AXML. Exported components, permissions, SDK versions, backup flags, deep link schemes, task hijacking, custom permissions.
+## Architecture (v3)
 
-**Certificate Analysis** : reads signing certs from the APK
+The 3300-line monolith is gone. Code is split into focused modules:
 
-**Component Inspector** : lists all exported activities, services, receivers, providers with intent filters and permissions. Generates ADB commands to test each one.
+```
+src/
+  main.js              UI coordinator, tabs, rendering, drag and drop
+  analyzer.worker.js   Web Worker entry point, isolates the analysis off the main thread
+  styles.css           Theme, layout, components
+  core/
+    engine.js          AXML, DEX, PKCS#7, rule engine, tracker matching, scoring
+    entropy.js         Shannon entropy and vendor secret patterns
+    export.js          JSON / CSV / SARIF 2.1 export
+    pdf.js             Printable PDF audit report
+lib/
+  jszip.min.js
+  jspdf.umd.min.js
+```
 
-<img width="1725" height="806" alt="image" src="https://github.com/user-attachments/assets/c0460bd6-5ce5-440c-9bbb-93f991370470" />
+Analysis runs in a Web Worker, so the UI stays responsive while a large APK is being parsed. If the worker fails to spawn, the page transparently falls back to running on the main thread.
 
+## Tabs
 
-**Tracker Detection** : identifies 38+ ad SDKs, analytics, crash reporters, payment libs from DEX strings.
+![Overview](docs/screenshots/overview.png)
 
-**File Explorer** : browse APK contents. XML, JSON, images, databases, .so files with syntax highlighting or hex view.
+Six tabs cover the analysis:
 
-**PDF Export** : findings report with all instances.
+- **Overview** - security score, app metadata, dangerous permissions, tracker SDKs
+- **Findings** - all rule hits with severity filter, search, confidence slider, sort, expand-all, copy-match
+- **Manifest** - parsed package info, permission table, raw decoded AndroidManifest.xml
+- **Components** - activities, services, receivers, providers with exported flag and intent filters
+- **Cert** - signing certificate subject, issuer, algorithm, validity, fingerprint, v1/v2 status
+- **Explorer** - file tree with viewer, hex dump for binaries, syntax-aware view for text
 
-## Use It
+![Findings](docs/screenshots/findings.png)
 
-Go to [apkauditor.com](https://apkauditor.com) and drop an APK.
+The Findings tab supports filtering by severity (Issues / Info / Secure), confidence threshold, free-text search across rule name / file / match / CWE, and sorting by severity, confidence, count, or name. Press `/` to focus search. Each instance has a copy-to-clipboard button.
 
-## Run Locally
+![Manifest](docs/screenshots/manifest.png)
 
-Open `index.html` in Chrome, Firefox, or Edge. Or serve it:
+![Components](docs/screenshots/components.png)
+
+The Components tab marks exported components in red and shows the intent filters that make them reachable from other apps. Implicit `exported=true` (when an intent filter is present but the attribute is omitted) is detected too.
+
+![Cert](docs/screenshots/cert.png)
+
+Cert tab flags debug certificates, expired certificates, and weak signature algorithms (MD5withRSA, SHA1withRSA). It also tells you whether the APK has a v2/v3 signing block - APKs that ship only v1 are vulnerable to the Janus exploit on Android < 7.
+
+![Explorer](docs/screenshots/explorer.png)
+
+Explorer lets you open AndroidManifest.xml, resources.arsc, any file inside `lib/`, `res/`, `assets/`, or `META-INF/`. Images render inline. Binaries get a paginated hex viewer. The Download button saves the current file to disk.
+
+## Run it locally
+
+Open `index.html` in a modern browser, or serve the directory:
 
 ```bash
-python -m http.server 8000
+python -m http.server 8765
+# open http://localhost:8765/
 ```
 
-## Quick Start
+There is no build step. No npm install. No service worker. It is plain JavaScript.
 
-Open the page, drag and drop an APK onto the drop zone. Wait for analysis to finish. Browse the five tabs: Overview, Findings, Code & Explorer, Components, Manifest.
+## Export
 
-Click any finding to jump to the source. Use the sidebar search to find classes, methods, strings across all decompiled code.
+The Export menu emits four formats:
 
-## Security Rules
+- **PDF** - printable audit with cover page, summary, findings (every instance), certificate, components, and trackers
+- **JSON** - the full result tree
+- **CSV** - flat findings table for spreadsheets
+- **SARIF 2.1** - drop into GitHub Code Scanning
 
-| Category | What it checks |
-|----------|---------------|
-| Storage | World-readable/writable files, external storage, SharedPreferences, SQLite raw queries |
-| Crypto | Weak hashes (MD5, SHA-1), hardcoded keys, ECB mode, static IVs, no padding, deprecated ciphers |
-| Network | Cleartext HTTP, missing cert pinning, custom TrustManagers, hostname verifier bypasses |
-| Components | Exported without permissions, intent redirection, pending intent mutability, deep link hijacking |
-| WebView | JavaScript enabled, file access, debug mode, content provider access, mixed content |
-| Secrets | API keys (Google, AWS, Firebase, Stripe, Twilio, etc.), hardcoded passwords and tokens |
-| Code | Reflection, dynamic class loading, native libs, clipboard access, screenshot flags |
+## Keyboard
 
-## Multi-DEX Support
+| Key                | Action                          |
+|--------------------|---------------------------------|
+| `Alt + 1..6`       | Jump to tab                     |
+| `/`                | Focus findings search           |
+| `Esc`              | Collapse findings / close menus |
+| `Arrow keys`       | Move between tabs               |
 
-Handles APKs with multiple DEX files (classes.dex through classes9.dex). All get parsed and scanned.
+## Theme
 
-## Project Structure
+Toggle button in the header cycles dark ↔ light. The choice is stored in localStorage. You can also force one with `?theme=dark` or `?theme=light` in the URL.
 
-```
-index.html         - UI and styling
-apk-analyzer.js    - all analysis logic
-lib/
-  jszip.min.js     - ZIP extraction (MIT)
-  jspdf.umd.min.js - PDF export (MIT)
-```
+![Light theme](docs/screenshots/landing-light.png)
 
-## How It Works
+## Privacy
 
-Everything runs client-side in JavaScript. The APK is extracted with JSZip, DEX files are parsed from binary, bytecode is translated to Java pseudocode through register tracking and pattern matching, binary XML is decoded from AXML format, and certificates are parsed from PKCS#7/DER. No server, no uploads, no external calls.
+The APK is read into an ArrayBuffer with the File API, transferred to the Web Worker, parsed in memory, and discarded when you close the tab. There is no network call. The page has a strict CSP that disallows it. You can run it offline.
+
+## Coverage
+
+| Area      | Checks                                                                                              |
+|-----------|-----------------------------------------------------------------------------------------------------|
+| Manifest  | Debug flag, allowBackup, missing NSC, exported components, custom permissions, deep links           |
+| Crypto    | MD5 / SHA-1 / DES / RC4, ECB mode, static IVs, hardcoded keys                                       |
+| Network   | Cleartext HTTP, missing pinning, custom TrustManagers, hostname verifier bypass                     |
+| WebView   | JavaScript enabled, file access, addJavascriptInterface, mixed content                              |
+| Storage   | MODE_WORLD_READABLE / WRITABLE, external storage, SQLite raw queries, hardcoded SharedPrefs         |
+| Code      | Reflection, dynamic class loading, runtime exec, clipboard, screenshot blocking                     |
+| Secrets   | AWS / Stripe / Google / Firebase / GitHub / Slack / Twilio / JWT / PEM with entropy gating          |
+| Signing   | v1-only, debug cert, expired cert, weak signature algorithm                                         |
+
+## Limits
+
+- Each rule emits at most 20 instances per file, capped at 500 per rule globally
+- Up to 5000 DEX classes are scanned for rule patterns (the parser still reads them all)
+- Resource files larger than 300 KB are sampled rather than scanned end-to-end
+- Hex viewer pages at 4 KB increments to keep large binaries responsive
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
-
-## Disclaimer
-
-For authorized security testing and educational use only. Get permission before analyzing APKs you don't own.
+CC BY-NC-ND 4.0. See [LICENSE](LICENSE).
 
 ## Author
 
-[Sandeep Wawdane](https://www.linkedin.com/in/sandeepwawdane/)
+Built by [Sandeep Wawdane](https://github.com/thecybersandeep).
+
+For authorized testing and educational use. Get permission before analyzing APKs you do not own.
+
+## Sister tools
+
+- [IPA Auditor](https://ipaauditor.com) - drag-drop iOS IPA static analyzer
+- [ADB Auditor](https://adbauditor.com) - live Android audit over WebUSB and ADB
