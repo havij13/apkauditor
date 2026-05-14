@@ -46,34 +46,14 @@ Analysis runs in a Web Worker, so the UI stays responsive while a large APK is b
 
 ## Tabs
 
-![Overview](docs/screenshots/overview.png)
-
 Six tabs cover the analysis:
 
 - **Overview** - security score, app metadata, dangerous permissions, tracker SDKs
-- **Findings** - all rule hits with severity filter, search, confidence slider, sort, expand-all, copy-match
+- **Findings** - all rule hits with severity filter, search, confidence slider, sort, expand-all, copy-match. Filter by severity (Issues / Info / Secure), confidence threshold, free-text search across rule name / file / match / CWE, and sort by severity, confidence, count, or name. Press `/` to focus search. Each instance has a copy-to-clipboard button.
 - **Manifest** - parsed package info, permission table, raw decoded AndroidManifest.xml
-- **Components** - activities, services, receivers, providers with exported flag and intent filters
-- **Cert** - signing certificate subject, issuer, algorithm, validity, fingerprint, v1/v2 status
-- **Explorer** - file tree with viewer, hex dump for binaries, syntax-aware view for text
-
-![Findings](docs/screenshots/findings.png)
-
-The Findings tab supports filtering by severity (Issues / Info / Secure), confidence threshold, free-text search across rule name / file / match / CWE, and sorting by severity, confidence, count, or name. Press `/` to focus search. Each instance has a copy-to-clipboard button.
-
-![Manifest](docs/screenshots/manifest.png)
-
-![Components](docs/screenshots/components.png)
-
-The Components tab marks exported components in red and shows the intent filters that make them reachable from other apps. Implicit `exported=true` (when an intent filter is present but the attribute is omitted) is detected too.
-
-![Cert](docs/screenshots/cert.png)
-
-Cert tab flags debug certificates, expired certificates, and weak signature algorithms (MD5withRSA, SHA1withRSA). It also tells you whether the APK has a v2/v3 signing block - APKs that ship only v1 are vulnerable to the Janus exploit on Android < 7.
-
-![Explorer](docs/screenshots/explorer.png)
-
-Explorer lets you open AndroidManifest.xml, resources.arsc, any file inside `lib/`, `res/`, `assets/`, or `META-INF/`. Images render inline. Binaries get a paginated hex viewer. The Download button saves the current file to disk.
+- **Components** - activities, services, receivers, providers with exported flag and intent filters. Marks exported components in red and shows the intent filters that make them reachable from other apps. Implicit `exported=true` (when an intent filter is present but the attribute is omitted) is detected too.
+- **Cert** - signing certificate subject, issuer, algorithm, validity, fingerprint, v1/v2 status. Flags debug certificates, expired certificates, and weak signature algorithms (MD5withRSA, SHA1withRSA). Tells you whether the APK has a v2/v3 signing block - APKs that ship only v1 are vulnerable to the Janus exploit on Android < 7.
+- **Explorer** - file tree with viewer, hex dump for binaries, syntax-aware view for text. Opens AndroidManifest.xml, resources.arsc, any file inside `lib/`, `res/`, `assets/`, or `META-INF/`. Images render inline. Binaries get a paginated hex viewer. The Download button saves the current file to disk.
 
 ## Run it locally
 
